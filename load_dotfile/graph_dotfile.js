@@ -24,6 +24,7 @@ Drawing.DotFileGraph = function(options)
     this.limit = options.limit || 10;
     this.nodes_count = options.numNodes || 20;
     this.edges_count = options.numEdges || 10;
+    this.parsedGraph = null; // at the start this is undefined
 
     var camera, controls, scene, renderer, interaction, geometry, object_selection;
     var stats;
@@ -32,7 +33,7 @@ Drawing.DotFileGraph = function(options)
 
     var geometries = [];
 
-    var that = this; // NOTE(tim): WTF?
+    var that = this; // NOTE(tim): apparently that makes the variable available outside of this scope
 
     init();
     if(!this.file)
@@ -364,20 +365,21 @@ Drawing.DotFileGraph = function(options)
     {
         console.log("onFileChanged")
         // trigger for when the filename of element dotfile_id changes
-        filename = loadDotFileContent();
-        if(filename)
+        fileobject = loadDotFile();
+        if(fileobject)
         {
-            console.log(filename)
+            console.log(fileobject)
+            parseDotFile(fileobject);
         }
     }
 
-    function loadDotFileContent()
+    function loadDotFile()
     {
-        console.log("loadDotFileContent")
+        console.log("loadDotFile")
         var f = document.getElementById('dotfile_id').files
         if(f.length > 0)
         {
-            var filename = f[0].name;
+            return(f[0]);
         }
         else
         {
@@ -385,8 +387,125 @@ Drawing.DotFileGraph = function(options)
         }
     }
 
-    function createGraphFromFile(filename)
+    function parseDotFile(fileobject)
     {
-        parseDotFile();
+        filename = fileobject.name;
+        var extension = filename.split('.').pop();
+        if(extension === "dot")
+        {
+            console.log("is dotfile!")
+            const reader = new FileReader();
+            reader.readAsText(fileobject);
+            var filecontents;
+            reader.onload = function(e)
+            {
+                filecontents = e.target.result;
+            };
+            reader.addEventListener("load", continueParsing);
+
+            function continueParsing()
+            {
+                console.log("continueParsing")
+                var g = graphlibDot.parse(filecontents);
+                console.log(g)
+                that.parsedGraph = g;
+                drawParsedGraph();
+            }
+        }
+    }
+
+    function drawParsedGraph()
+    {
+        console.log("parsedGraph")
+        console.log(that.parsedGraph)
+        if(that.parsedGraph)
+        {
+            console.log("if(this.parsedGraph)")
+            clearScene();
+            clearGraph();
+            that.layout_options.width = that.layout_options.width || 2000;
+            that.layout_options.height = that.layout_options.height || 2000;
+            that.layout_options.iterations = that.layout_options.iterations || 100000;
+            that.layout_options.layout = that.layout_options.layout || that.layout;
+            graph.layout = new Layout.ForceDirected(graph, that.layout_options);
+            graph.layout.init();
+            info_text.nodes = "Nodes " + graph.nodes.length;
+            info_text.edges = "Edges " + graph.edges.length;
+            graph.nodes = []; // clear array
+
+            my_graph = that.parsedGraph;
+            nodes = my_graph.nodes();
+            for (var ii in nodes)
+            {
+                var n = nodes[ii];
+                console.log("node " + n + " points to");
+                local_edges = my_graph.outEdges(n)
+                console.log(local_edges)
+
+                var node = new GRAPHVIS.Node(ii);
+                console.log("new node " + n)
+                console.log(node)
+                node.data.title = my_graph.node(n);
+                graph.addNode(node);
+                drawNode(node);
+                for(var jj in local_edges)
+                {
+                    var m = local_edges[jj];
+                    var target_node = new GRAPHVIS.Node(jj);
+                    graph.addNode(target_node);
+
+                    console.log("new node " + m)
+                    console.log(target_node)
+                    node.data.title = my_graph.node(m);
+                    if(graph.addEdge(node, target_node))
+                    {
+                        drawEdge(node, target_node)
+                    }
+                }
+
+            }
+            /*
+
+            var steps = 1;
+            while(nodes.length !== 0 && steps < that.nodes_count)
+            {
+                node = nodes.shift();
+                var numEdges = randomFromTo(1, that.edges_count);
+                for(var i=1; i <= numEdges; i++)
+                {
+                    var target_node = new GRAPHVIS.Node(i*steps);
+                    if(graph.addNode(target_node))
+                    {
+                        target_node.data.title = "This is node " + target_node.id;
+                        drawNode(target_node);
+                        nodes.push(target_node);
+                        if(graph.addEdge(node, target_node))
+                        {
+                            drawEdge(node, target_node);
+                        }
+                    }
+                }
+                steps++;
+            }
+
+
+            */
+
+            console.log("animate")
+            animate();
+        }
+    }
+
+    function clearScene()
+    {
+        scene = [];
+        scene = new THREE.Scene();
+    }
+
+    function clearGraph()
+    {
+        delete graph;
+        graph = new GRAPHVIS.Graph({limit: options.limit});
+        return(graph);
     }
 };
