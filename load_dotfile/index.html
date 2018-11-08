@@ -16,14 +16,33 @@
   <head>
     <meta charset="utf-8">
     <title>Graph Visualization</title>
-    <script type="text/javascript" src="../../build/graph.min.js"></script>
-    <script type="text/javascript" src="sphere_graph.js"></script>
-
+    <script type="text/javascript" src="../build/graph.min.js"></script>
+    <script type="text/javascript" src="graph_dotfile.js"></script>
     <script type="text/javascript">
-      var drawing;
-      function createDrawing() {
-        drawing = new Drawing.SphereGraph({numNodes: 50, showStats: true, showInfo: true});
-      }
+    </script>
+    <script type="text/javascript">
+        var drawing;
+        function createDrawing()
+        {
+            drawing = new Drawing.DotFileGraph({
+                layout: '3d',
+                selection: true,
+                graphLayout:{attraction: 5, repulsion: 0.5},
+                showStats: true,
+                showInfo: true
+            });
+        }
+        function registerLoadFile()
+        {
+            var element = document.getElementById("dotfile_id");
+            //element.onclick = function(e)
+            element.onchange = function(e)
+            {
+                drawing.onFileChanged();
+            }
+            console.log(document.getElementById("dotfile_id"));
+        }
+
     </script>
 
     <style type="text/css">
@@ -50,15 +69,18 @@
       }
     </style>
   </head>
-  <body onload="createDrawing()">
+  <body onload="createDrawing(); registerLoadFile();">
     <div id="options">
       <form>
         <p>
-          <input type="checkbox" id="show_labels" onclick="drawing.show_labels = this.checked;">
+          <input type="checkbox" id="show_labels" onclick="drawing.show_labels = this.checked;" />
           <label for="show_labels">Show labels</label>
         </p>
         <p>
-          <input type="button" value="Stop layout" onclick="drawing.stop_calculating();">
+          <input type="button" value="Stop layout" onclick="drawing.stop_calculating();" />
+        </p>
+        <p>
+            <input id='dotfile_id' type='file' name='filename'/>
         </p>
       </form>
     </div>
