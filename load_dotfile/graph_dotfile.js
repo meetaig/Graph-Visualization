@@ -30,7 +30,7 @@ Drawing.DotFileGraph = function(options)
     var stats;
     var info_text = {};
     var graph = new GRAPHVIS.Graph({limit: options.limit});
-
+    var node_index = 0;
     var geometries = [];
 
     var that = this; // NOTE(tim): apparently that makes the variable available outside of this scope
@@ -435,37 +435,17 @@ Drawing.DotFileGraph = function(options)
 
             my_graph = that.parsedGraph;
             nodes = my_graph.nodes();
-            for (var ii in nodes)
-            {
-                var n = nodes[ii];
-                console.log("node " + n + " points to");
-                local_edges = my_graph.outEdges(n)
-                console.log(local_edges)
-
-                var node = new GRAPHVIS.Node(ii);
-                console.log("new node " + n)
-                console.log(node)
-                node.data.title = my_graph.node(n);
-                graph.addNode(node);
-                drawNode(node);
-                for(var jj in local_edges)
-                {
-                    var m = local_edges[jj];
-                    var target_node = new GRAPHVIS.Node(jj);
-                    graph.addNode(target_node);
-
-                    console.log("new node " + m)
-                    console.log(target_node)
-                    node.data.title = my_graph.node(m);
-                    if(graph.addEdge(node, target_node))
-                    {
-                        drawEdge(node, target_node)
-                    }
-                }
-
-            }
+            console.log(nodes)
+            var n = nodes[node_index];
+            var draw_node = new GRAPHVIS.Node(node_index++);
+            console.log("new node " + n)
+            console.log(draw_node)
+            draw_node.data.title = my_graph.node(n);
+            graph.addNode(draw_node);
+            drawNode(draw_node);
+            console.log("first call to drawSuccessors");
+            drawSuccessors(my_graph, nodes, draw_node, n);
             /*
-
             var steps = 1;
             while(nodes.length !== 0 && steps < that.nodes_count)
             {
@@ -487,12 +467,44 @@ Drawing.DotFileGraph = function(options)
                 }
                 steps++;
             }
-
-
             */
-
             console.log("animate")
             animate();
+        }
+    }
+
+    function drawSuccessors(my_graph, nodes, draw_node, parsed_node)
+    {
+        console.log("drawSuccessors");
+        if(parsed_node)
+        {
+            successors = my_graph.successors(parsed_node);
+            if(successors)
+            {
+                for(ii in successors)
+                {
+                    succ_node = successors[ii];
+                    console.log(succ_node);
+
+                    console.log("node_index: " + node_index);
+                    var target_node = new GRAPHVIS.Node(node_index);
+                    target_node.data.title = my_graph.node(succ_node);
+                    console.log(target_node)
+                    node_index++;
+
+                    drawNode(target_node);
+                    if(graph.addNode(target_node))
+                    {
+                        console.log("added to graph");
+                        if(graph.addEdge(draw_node, target_node))
+                        {
+                            console.log("drawing edge");
+                            drawEdge(draw_node, target_node);
+                        }
+                    }
+                    drawSuccessors(my_graph, nodes, target_node, succ_node);
+                }
+            }
         }
     }
 
